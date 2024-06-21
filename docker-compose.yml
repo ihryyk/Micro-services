@@ -1,0 +1,99 @@
+version: "3.7"
+
+services:
+  micro-sender:
+    build:
+      context: ./micro-sender
+    ports:
+      - "8080:8080"
+    networks:
+      - sender
+    depends_on:
+      - rabbitmq
+
+  micro-recipient:
+    build:
+      context: ./micro-recipient
+    ports:
+      - "8081:8081"
+    networks:
+      - recipient
+    depends_on:
+      - rabbitmq
+      - micro-sender
+
+  micro-collector:
+    build:
+      context: ./micro-collector
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+    networks:
+      - recipient
+    depends_on:
+      - rabbitmq
+      - micro-recipient
+      - postgres
+
+  micro-visualizer:
+    build:
+      context: ./micro-visualizer
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+    networks:
+      - recipient
+    depends_on:
+      - postgres
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - sender
+      - recipient
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "5432:5432"
+    networks:
+      - sender
+      - recipient
+
+networks:
+  sender:
+  recipient:
