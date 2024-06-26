@@ -7,9 +7,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-@RequiredArgsConstructor
-@Slf4j
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class MicroRecipientService {
 
     private final MicroRecipientRepository microRecipientRepository;
