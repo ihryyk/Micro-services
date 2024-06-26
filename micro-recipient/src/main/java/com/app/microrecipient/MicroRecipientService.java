@@ -3,8 +3,8 @@ package com.app.microrecipient;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
@@ -29,13 +29,18 @@ public class MicroRecipientService {
                 savedUser.getLastName(), savedUser.getId());
     }
 
-    @RabbitListener(queues = "micro-services")
-    private void receiveMessage(String message) {
-        log.info("Reading message form rabbitmq: {} ...", message);
-        MicroSenderMessageResponse microSenderMessageResponse = JsonObjectMapper.fromJson(message,
-                MicroSenderMessageResponse.class);
-        saveUser(microSenderMessageResponse.user());
-        log.info("Read message form rabbitmq: {} ...", message);
+    @Scheduled(fixedRateString = "3000")
+    private void receiveMessage() {
+        Object message = rabbitTemplate.receiveAndConvert("micro-services");
+        if (message != null) {
+            MicroSenderMessageResponse microSenderMessageResponse = JsonObjectMapper.fromJson((String) message,
+                    MicroSenderMessageResponse.class);
+            saveUser(microSenderMessageResponse.user());
+            log.info("Read message form rabbitmq: {} ...", message);
+            return;
+        }
+        log.error("No messages available in the queue");
+
     }
 
 }
